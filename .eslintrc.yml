@@ -6,9 +6,9 @@ plugins:
 extends:
   - eslint:recommended
   - plugin:@typescript-eslint/recommended
-  - plugin:import/typescript
   - plugin:import/errors
   - plugin:import/warnings
+  - plugin:import/typescript
   - prettier
   - plugin:prettier/recommended
   - prettier/@typescript-eslint
@@ -16,15 +16,15 @@ env:
   browser: true
   es6: true
 parserOptions:
-  ecmaVersion: 2018
   sourceType: module
 overrides:
   - files:
-      - webpack.*.js
-    extends:
-      - webpack
-      - prettier
-      - plugin:prettier/recommended
-      - prettier/@typescript-eslint
+      - "*.test.ts"
+    env:
+      jest: true
+  - files:
+      - "*.config.js"
+    env:
+      node: true
     rules:
       "@typescript-eslint/no-var-requires": 0

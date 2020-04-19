@@ -3,7 +3,7 @@ export class Main {
     console.log(this.strHello);
   }
 
-  private static get strHello(): string {
+  public static get strHello(): string {
     return 'hello';
   }
 }
