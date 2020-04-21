@@ -1,5 +1,5 @@
 import * as PIXI from 'pixi.js';
-import { InputButton } from './input-pad';
+import { InputPad } from './input-pad';
 import { Player } from './model/character/player';
 
 export class Main {
@@ -14,10 +14,6 @@ export class Main {
       height: 720,
     });
     document.body.appendChild(app.view);
-    const left = new InputButton('ArrowLeft'),
-      up = new InputButton('ArrowUp'),
-      right = new InputButton('ArrowRight'),
-      down = new InputButton('ArrowDown');
 
     //Create the `cat` sprite
     this.protagonist = new Player(0, 0, 32, (hitarea, graphics) => {
@@ -27,55 +23,42 @@ export class Main {
       app.stage.addChild(graphics);
     });
 
-    //Left arrow key `press` method
-    left.press = (): void => {
-      //Change the cat's velocity when the key is pressed
-      this.vx = -5;
-      this.vy = 0;
-    };
-
-    //Left arrow key `release` method
-    left.release = (): void => {
-      //If the left arrow has been released, and the right arrow isn't down,
-      //and the cat isn't moving vertically:
-      //Stop the cat
-      if (!right.isDown && this.vy === 0) {
-        this.vx = 0;
-      }
-    };
-
-    //Up
-    up.press = (): void => {
-      this.vy = -5;
-      this.vx = 0;
-    };
-    up.release = (): void => {
-      if (!down.isDown && this.vx === 0) {
-        this.vy = 0;
-      }
-    };
-
-    //Right
-    right.press = (): void => {
-      this.vx = 5;
-      this.vy = 0;
-    };
-    right.release = (): void => {
-      if (!left.isDown && this.vy === 0) {
-        this.vx = 0;
-      }
-    };
-
-    //Down
-    down.press = (): void => {
-      this.vy = 5;
-      this.vx = 0;
-    };
-    down.release = (): void => {
-      if (!up.isDown && this.vx === 0) {
-        this.vy = 0;
-      }
-    };
+    InputPad.addButton(
+      'ArrowLeft',
+      (): void => {
+        this.vx -= 5;
+      },
+      (): void => {
+        this.vx += 5;
+      },
+    );
+    InputPad.addButton(
+      'ArrowUp',
+      (): void => {
+        this.vy -= 5;
+      },
+      (): void => {
+        this.vy += 5;
+      },
+    );
+    InputPad.addButton(
+      'ArrowRight',
+      (): void => {
+        this.vx += 5;
+      },
+      (): void => {
+        this.vx -= 5;
+      },
+    );
+    InputPad.addButton(
+      'ArrowDown',
+      (): void => {
+        this.vy += 5;
+      },
+      (): void => {
+        this.vy -= 5;
+      },
+    );
 
     //Set the game state
     this.state = this.move;

@@ -1,71 +1,61 @@
 /**
- * Button on keyboard
- * @see https://github.com/kittykatattack/learningPixi#introduction
+ * keyboard, gamepad
  */
-export class InputButton {
-  private key: InputState;
-  private downListener: (event: KeyboardEvent) => void;
-  private upListener: (event: KeyboardEvent) => void;
-
-  constructor(value: string) {
-    this.key = {
-      value: value,
-      isDown: false,
-      isUp: true,
-      press: undefined,
-      release: undefined,
+export class InputPad {
+  private static keys: {
+    [key: string]: {
+      isPressed: boolean;
+      pressFunc: () => void;
+      releaseFunc: () => void;
     };
-    //Attach event listeners
-    this.downListener = this.downHandler.bind(this);
-    this.upListener = this.upHandler.bind(this);
-    window.addEventListener('keydown', this.downListener, false);
-    window.addEventListener('keyup', this.upListener, false);
-  }
+  } = {};
+  private static _pressListener: (event: KeyboardEvent) => void;
+  private static _releaseListener: (event: KeyboardEvent) => void;
 
-  public get isDown(): boolean {
-    return this.key.isDown;
-  }
-
-  public get isUp(): boolean {
-    return this.key.isUp;
-  }
-
-  public set press(value: () => void) {
-    this.key.press = value;
-  }
-
-  public set release(value: () => void) {
-    this.key.release = value;
-  }
-
-  public downHandler(event: KeyboardEvent): void {
-    if (event.key === this.key.value) {
-      if (this.key.isUp && this.key.press) this.key.press();
-      this.key.isDown = true;
-      this.key.isUp = false;
+  private static init(): void {
+    const pressListener = (event: KeyboardEvent): void => {
       event.preventDefault();
+      for (const [key, value] of Object.entries(this.keys)) {
+        if (event.key === key && !value.isPressed) {
+          value.isPressed = true;
+          value.pressFunc();
+        }
+      }
+    };
+    const releaseListener = (event: KeyboardEvent): void => {
+      event.preventDefault();
+      for (const [key, value] of Object.entries(this.keys)) {
+        if (event.key === key && value.isPressed) {
+          value.isPressed = false;
+          value.releaseFunc();
+        }
+      }
+    };
+    if (this.isUninited()) {
+      this._pressListener = pressListener;
+      this._releaseListener = releaseListener;
+      document.addEventListener('keydown', this._pressListener);
+      document.addEventListener('keyup', this._releaseListener);
     }
   }
 
-  public upHandler(event: KeyboardEvent): void {
-    if (event.key === this.key.value) {
-      if (this.key.isDown && this.key.release) this.key.release();
-      this.key.isDown = false;
-      this.key.isUp = true;
-      event.preventDefault();
-    }
+  private static isUninited(): boolean {
+    return (
+      this._pressListener === undefined && this._releaseListener === undefined
+    );
   }
 
-  public unsubscribe(): void {
-    window.removeEventListener('keydown', this.downListener);
-    window.removeEventListener('keyup', this.upListener);
+  static addButton(
+    key: string,
+    pressFunc: () => void,
+    releaseFunc: () => void,
+  ): void {
+    this.keys[key] = { isPressed: false, pressFunc, releaseFunc };
+    console.log(`${this.isUninited()}`);
+    if (this.isUninited()) this.init();
   }
-}
 
-interface InputState {
-  value: string;
-  isDown: boolean;
-  isUp: boolean;
-  press?(): void;
-  release?(): void;
+  static removeButton(key: string): void {
+    delete this.keys[key];
+  }
 }
