@@ -1,10 +1,11 @@
 import * as PIXI from 'pixi.js';
 import { InputButton } from './input-pad';
+import { Player } from './model/character/player';
 
 export class Main {
   static vx = 0;
   static vy = 0;
-  static protagonist: PIXI.Graphics;
+  static protagonist: Player;
   static state: () => void;
 
   public static run(): void {
@@ -19,11 +20,12 @@ export class Main {
       down = new InputButton('ArrowDown');
 
     //Create the `cat` sprite
-    const protagonist = (this.protagonist = new PIXI.Graphics());
-    protagonist.beginFill(0x9966ff);
-    protagonist.drawCircle(0, 0, 32);
-    protagonist.endFill();
-    app.stage.addChild(protagonist);
+    this.protagonist = new Player(0, 0, 32, (hitarea, graphics) => {
+      graphics.beginFill(0xffffff);
+      graphics.drawCircle(hitarea.x, hitarea.y, hitarea.radius);
+      graphics.endFill();
+      app.stage.addChild(graphics);
+    });
 
     //Left arrow key `press` method
     left.press = (): void => {
