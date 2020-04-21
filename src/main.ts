@@ -5,6 +5,7 @@ import { Player } from './model/character/player';
 export class Main {
   static vx = 0;
   static vy = 0;
+  static isSlow = false;
   static protagonist: Player;
   static state: () => void;
 
@@ -24,39 +25,48 @@ export class Main {
     });
 
     InputPad.addButton(
-      'ArrowLeft',
+      'Shift',
       (): void => {
-        this.vx -= 5;
+        this.isSlow = true;
       },
       (): void => {
-        this.vx += 5;
+        this.isSlow = false;
+      },
+    );
+    InputPad.addButton(
+      'ArrowLeft',
+      (): void => {
+        this.vx = -this.setMovingVelocity();
+      },
+      (): void => {
+        this.vx = 0;
       },
     );
     InputPad.addButton(
       'ArrowUp',
       (): void => {
-        this.vy -= 5;
+        this.vy = -this.setMovingVelocity();
       },
       (): void => {
-        this.vy += 5;
+        this.vy = 0;
       },
     );
     InputPad.addButton(
       'ArrowRight',
       (): void => {
-        this.vx += 5;
+        this.vx = this.setMovingVelocity();
       },
       (): void => {
-        this.vx -= 5;
+        this.vx = 0;
       },
     );
     InputPad.addButton(
       'ArrowDown',
       (): void => {
-        this.vy += 5;
+        this.vy = this.setMovingVelocity();
       },
       (): void => {
-        this.vy -= 5;
+        this.vy = 0;
       },
     );
 
@@ -67,8 +77,18 @@ export class Main {
     app.ticker.add(() => this.gameLoop());
   }
 
+  static resetVelocity(): void {
+    this.vx = 0;
+    this.vy = 0;
+  }
+
+  static setMovingVelocity(): number {
+    return this.isSlow ? 3 : 6;
+  }
+
   static gameLoop(): void {
     this.state();
+    InputPad.fire();
   }
 
   static move(): void {
