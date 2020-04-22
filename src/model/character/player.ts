@@ -2,9 +2,9 @@ import { Graphics } from 'pixi.js';
 import { Circle } from './coordinate';
 
 export class Player {
-  private _hitarea: Circle;
-  private _graphics: Graphics;
-  private _isVisible = true;
+  protected _hitarea: Circle;
+  protected _graphics: Graphics;
+  protected _isVisible = true;
 
   public get hitarea(): Circle {
     return this._hitarea;

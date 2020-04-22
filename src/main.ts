@@ -1,7 +1,8 @@
 import * as PIXI from 'pixi.js';
 import { InputPad } from './input-pad';
 import { Player } from './model/character/player';
-import { Coordinate } from './model/character/coordinate';
+import { Coordinate, Circle } from './model/character/coordinate';
+import { MovingPlayer } from './model/character/moving-player';
 
 export class Main {
   static vx = 0;
@@ -10,7 +11,7 @@ export class Main {
   static screenHeight = 720;
   static isSlow = false;
   static protagonist: Player;
-  static bullets: Player[];
+  static bullets: MovingPlayer[];
   static state: () => void;
 
   public static run(): void {
@@ -20,26 +21,39 @@ export class Main {
     });
     document.body.appendChild(app.view);
 
-    this.bullets = Array(1000)
-      .fill(null)
-      .map(
-        () =>
-          new Player(
-            Math.random() * this.screenWidth,
-            Math.random() * this.screenHeight,
-            10,
-            (x, y, radius, graphics) => {
-              graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
-              app.stage.addChild(graphics);
-            },
-          ),
-      );
+    this.bullets = Array.from(
+      { length: 1000 },
+      () =>
+        new MovingPlayer(
+          Math.random() * this.screenWidth,
+          Math.random() * this.screenHeight,
+          10,
+          (x, y, radius, graphics) => {
+            graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+            app.stage.addChild(graphics);
+          },
+          (circle) => this.moveDiagonallyAndBounce(circle),
+        ),
+    );
     //Create the `cat` sprite
     this.protagonist = new Player(0, 0, 32, (x, y, radius, graphics) => {
       graphics.beginFill(0xff0000).drawCircle(x, y, radius).endFill();
       app.stage.addChild(graphics);
     });
 
+    InputPad.addButton(
+      'z',
+      (): void => {
+        // Bullets will stop
+        this.bullets.forEach((b) => b.setFuncMoving(undefined));
+      },
+      (): void => {
+        // Bullets will move again but does not restore the velocity and direction
+        this.bullets.forEach((b) =>
+          b.setFuncMoving((circle) => this.moveDiagonallyAndBounce(circle)),
+        );
+      },
+    );
     InputPad.addButton(
       'Shift',
       (): void => {
@@ -102,14 +116,46 @@ export class Main {
     return this.isSlow ? 3 : 6;
   }
 
+  static moveDiagonallyAndBounce(circle: Circle): () => void {
+    // Captured variables
+    let vx = Math.random() + 1;
+    let vy = Math.random();
+    const invert = (): void => {
+      if (this.screenWidth <= circle.x + circle.radius) {
+        circle.x = this.screenWidth - circle.radius;
+        vx *= -1;
+      } else if (circle.x - circle.radius <= 0) {
+        circle.x = circle.radius;
+        vx *= -1;
+      }
+      if (this.screenHeight <= circle.y + circle.radius) {
+        circle.y = this.screenHeight - circle.radius;
+        vy *= -1;
+      } else if (circle.y - circle.radius <= 0) {
+        circle.y = circle.radius;
+        vy *= -1;
+      }
+    };
+    return (): void => {
+      circle.x += vx;
+      circle.y += vy;
+      invert();
+    };
+  }
+
   static determineHit(): void {
+    let isHit = false;
     for (const bullet of this.bullets) {
+      bullet.move();
+
+      // Determine the protagonist is hit by bulltes
       if (
+        !isHit &&
         bullet.isVisible &&
         Coordinate.isCollided(this.protagonist.hitarea, bullet.hitarea)
       ) {
+        isHit = true;
         bullet.vanish();
-        return;
       }
     }
   }
