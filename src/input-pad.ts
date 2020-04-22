@@ -32,10 +32,12 @@ export class InputPad {
         }
       }
     };
-    if (this.isUninited()) {
+    if (this._pressListener === undefined) {
       this._pressListener = pressListener;
-      this._releaseListener = releaseListener;
       document.addEventListener('keydown', this._pressListener);
+    }
+    if (this._releaseListener === undefined) {
+      this._releaseListener = releaseListener;
       document.addEventListener('keyup', this._releaseListener);
     }
   }
@@ -46,19 +48,18 @@ export class InputPad {
     }
   }
 
-  private static isUninited(): boolean {
-    return (
-      this._pressListener === undefined || this._releaseListener === undefined
-    );
-  }
-
   static addButton(
     key: string,
     pressFunc: () => void,
     releaseFunc: () => void,
   ): void {
     this.keys[key] = { isPressed: false, pressFunc, releaseFunc };
-    if (this.isUninited()) this.init();
+    if (
+      this._pressListener === undefined ||
+      this._releaseListener === undefined
+    ) {
+      this.init();
+    }
   }
 
   static removeButton(key: string): void {
@@ -66,10 +67,12 @@ export class InputPad {
   }
 
   static removeListener(): void {
-    if (!this.isUninited()) {
-      document.removeEventListener('keydown', this._pressListener!);
-      document.removeEventListener('keyup', this._releaseListener!);
+    if (this._pressListener !== undefined) {
+      document.removeEventListener('keydown', this._pressListener);
       this._pressListener = undefined;
+    }
+    if (this._releaseListener !== undefined) {
+      document.removeEventListener('keyup', this._releaseListener);
       this._releaseListener = undefined;
     }
   }
