@@ -1,26 +1,42 @@
 import * as PIXI from 'pixi.js';
 import { InputPad } from './input-pad';
 import { Player } from './model/character/player';
+import { Coordinate } from './model/character/coordinate';
 
 export class Main {
   static vx = 0;
   static vy = 0;
+  static screenWidth = 512;
+  static screenHeight = 720;
   static isSlow = false;
   static protagonist: Player;
+  static bullets: Player[];
   static state: () => void;
 
   public static run(): void {
     const app = new PIXI.Application({
-      width: 512,
-      height: 720,
+      width: this.screenWidth,
+      height: this.screenHeight,
     });
     document.body.appendChild(app.view);
 
+    this.bullets = Array(1000)
+      .fill(null)
+      .map(
+        () =>
+          new Player(
+            Math.random() * this.screenWidth,
+            Math.random() * this.screenHeight,
+            10,
+            (x, y, radius, graphics) => {
+              graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+              app.stage.addChild(graphics);
+            },
+          ),
+      );
     //Create the `cat` sprite
-    this.protagonist = new Player(0, 0, 32, (hitarea, graphics) => {
-      graphics.beginFill(0xffffff);
-      graphics.drawCircle(hitarea.x, hitarea.y, hitarea.radius);
-      graphics.endFill();
+    this.protagonist = new Player(0, 0, 32, (x, y, radius, graphics) => {
+      graphics.beginFill(0xff0000).drawCircle(x, y, radius).endFill();
       app.stage.addChild(graphics);
     });
 
@@ -86,9 +102,22 @@ export class Main {
     return this.isSlow ? 3 : 6;
   }
 
+  static determineHit(): void {
+    for (const bullet of this.bullets) {
+      if (
+        bullet.isVisible &&
+        Coordinate.isCollided(this.protagonist.hitarea, bullet.hitarea)
+      ) {
+        bullet.vanish();
+        return;
+      }
+    }
+  }
+
   static gameLoop(): void {
     this.state();
     InputPad.fire();
+    this.determineHit();
   }
 
   static move(): void {
