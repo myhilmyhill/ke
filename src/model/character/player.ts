@@ -21,6 +21,9 @@ export class Player {
   public set y(value) {
     this._hitarea.y = value;
   }
+  public get radius(): number {
+    return this._hitarea.radius;
+  }
   public get isVisible(): boolean {
     return this._isVisible;
   }

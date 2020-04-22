@@ -67,6 +67,9 @@ export class Main {
       'ArrowLeft',
       (): void => {
         this.vx = -this.setMovingVelocity();
+        if (this.protagonist.x - this.protagonist.radius <= 0) {
+          this.protagonist.x = this.protagonist.radius;
+        }
       },
       (): void => {
         this.vx = 0;
@@ -76,6 +79,9 @@ export class Main {
       'ArrowUp',
       (): void => {
         this.vy = -this.setMovingVelocity();
+        if (this.protagonist.y - this.protagonist.radius <= 0) {
+          this.protagonist.y = this.protagonist.radius;
+        }
       },
       (): void => {
         this.vy = 0;
@@ -85,6 +91,9 @@ export class Main {
       'ArrowRight',
       (): void => {
         this.vx = this.setMovingVelocity();
+        if (this.protagonist.x + this.protagonist.radius >= this.screenWidth) {
+          this.protagonist.x = this.screenWidth - this.protagonist.radius;
+        }
       },
       (): void => {
         this.vx = 0;
@@ -94,6 +103,9 @@ export class Main {
       'ArrowDown',
       (): void => {
         this.vy = this.setMovingVelocity();
+        if (this.protagonist.y + this.protagonist.radius >= this.screenHeight) {
+          this.protagonist.y = this.screenHeight - this.protagonist.radius;
+        }
       },
       (): void => {
         this.vy = 0;
@@ -113,7 +125,7 @@ export class Main {
   }
 
   static setMovingVelocity(): number {
-    return this.isSlow ? 3 : 6;
+    return (this.isSlow ? 3 : 6) / (this.vx * this.vy !== 0 ? 1.41421356 : 1);
   }
 
   static moveDiagonallyAndBounce(circle: Circle): () => void {
