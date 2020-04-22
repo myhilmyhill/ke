@@ -1,6 +1,5 @@
 import { Player } from './player';
 import { Graphics } from 'pixi.js';
-import { Circle } from './coordinate';
 
 export class MovingPlayer extends Player {
   private _funcMoving?: (() => void) | undefined;
@@ -15,16 +14,16 @@ export class MovingPlayer extends Player {
       radius: number,
       graphics: Graphics,
     ) => void,
-    funcMoving?: (hitarea: Circle) => () => void,
+    funcMoving?: (self: MovingPlayer) => () => void,
   ) {
     super(x, y, radius, funcInitial);
     this.setFuncMoving(funcMoving);
   }
 
   public setFuncMoving(
-    funcMoving: ((hitarea: Circle) => () => void) | undefined,
+    funcMoving: ((self: MovingPlayer) => () => void) | undefined,
   ): void {
-    this._funcMoving = funcMoving?.(this._hitarea);
+    this._funcMoving = funcMoving?.(this);
   }
 
   public move(): void {

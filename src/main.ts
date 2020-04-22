@@ -1,7 +1,7 @@
 import * as PIXI from 'pixi.js';
 import { InputPad } from './input-pad';
 import { Player } from './model/character/player';
-import { Coordinate, Circle } from './model/character/coordinate';
+import { Coordinate } from './model/character/coordinate';
 import { MovingPlayer } from './model/character/moving-player';
 
 export class Main {
@@ -10,8 +10,10 @@ export class Main {
   static screenWidth = 512;
   static screenHeight = 720;
   static isSlow = false;
+  static waittimeNextBullet = 0;
   static protagonist: Player;
   static bullets: MovingPlayer[];
+  static myBullets: MovingPlayer[];
   static state: () => void;
 
   public static run(): void {
@@ -32,7 +34,39 @@ export class Main {
             graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
             app.stage.addChild(graphics);
           },
-          (circle) => this.moveDiagonallyAndBounce(circle),
+          (self) => this.moveDiagonallyAndBounce(self),
+        ),
+    );
+    this.myBullets = Array.from(
+      { length: 30 },
+      () =>
+        new MovingPlayer(
+          0,
+          0,
+          5,
+          (x, y, radius, graphics) => {
+            graphics.beginFill(0x00ff00).drawCircle(x, y, radius).endFill();
+            app.stage.addChild(graphics);
+            graphics.visible = false;
+          },
+          (self) => (): void => {
+            self.y -= 10;
+            if (self.y < -self.radius) {
+              self.vanish();
+            }
+
+            // Hit enemy
+            for (const bullet of this.bullets) {
+              if (
+                bullet.isVisible &&
+                self.isVisible &&
+                Coordinate.isCollided(self.hitarea, bullet.hitarea)
+              ) {
+                bullet.vanish();
+                self.vanish();
+              }
+            }
+          },
         ),
     );
     //Create the `cat` sprite
@@ -43,6 +77,16 @@ export class Main {
 
     InputPad.addButton(
       'z',
+      () => this.launchBullet(),
+      () => this.launchBullet(),
+    );
+    InputPad.addButton(
+      'a',
+      () => this.bullets.forEach((b) => b.show()),
+      () => this.bullets.forEach((b) => b.show()),
+    );
+    InputPad.addButton(
+      'x',
       (): void => {
         // Bullets will stop
         this.bullets.forEach((b) => b.setFuncMoving(undefined));
@@ -50,7 +94,7 @@ export class Main {
       (): void => {
         // Bullets will move again but does not restore the velocity and direction
         this.bullets.forEach((b) =>
-          b.setFuncMoving((circle) => this.moveDiagonallyAndBounce(circle)),
+          b.setFuncMoving((self) => this.moveDiagonallyAndBounce(self)),
         );
       },
     );
@@ -119,19 +163,16 @@ export class Main {
     app.ticker.add(() => this.gameLoop());
   }
 
-  static resetVelocity(): void {
-    this.vx = 0;
-    this.vy = 0;
-  }
-
   static setMovingVelocity(): number {
     return (this.isSlow ? 3 : 6) / (this.vx * this.vy !== 0 ? 1.41421356 : 1);
   }
 
-  static moveDiagonallyAndBounce(circle: Circle): () => void {
+  static moveDiagonallyAndBounce(self: MovingPlayer): () => void {
     // Captured variables
+    const circle = self.hitarea;
     let vx = Math.random() + 1;
     let vy = Math.random();
+
     const invert = (): void => {
       if (this.screenWidth <= circle.x + circle.radius) {
         circle.x = this.screenWidth - circle.radius;
@@ -152,30 +193,45 @@ export class Main {
       circle.x += vx;
       circle.y += vy;
       invert();
+      this.determineHit(self);
     };
   }
 
-  static determineHit(): void {
-    let isHit = false;
-    for (const bullet of this.bullets) {
-      bullet.move();
+  static determineHit(bullet: MovingPlayer): void {
+    // Determine the protagonist is hit by bulltes
+    if (
+      bullet.isVisible &&
+      Coordinate.isCollided(this.protagonist.hitarea, bullet.hitarea)
+    ) {
+      bullet.vanish();
+    }
+  }
 
-      // Determine the protagonist is hit by bulltes
-      if (
-        !isHit &&
-        bullet.isVisible &&
-        Coordinate.isCollided(this.protagonist.hitarea, bullet.hitarea)
-      ) {
-        isHit = true;
-        bullet.vanish();
-      }
+  static launchBullet(): void {
+    if (this.waittimeNextBullet > 0) return;
+
+    let single = false;
+    for (const myBullet of this.myBullets) {
+      if (myBullet.isVisible) continue;
+      myBullet.show();
+      myBullet.x = this.protagonist.x + (single ? 10 : -10);
+      myBullet.y = this.protagonist.y;
+      if (single) return;
+      single = true;
+      this.waittimeNextBullet = 5;
     }
   }
 
   static gameLoop(): void {
     this.state();
     InputPad.fire();
-    this.determineHit();
+    for (const bullet of this.bullets) {
+      bullet.move();
+    }
+    for (const myBullet of this.myBullets) {
+      myBullet.move();
+    }
+    this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
   }
 
   static move(): void {

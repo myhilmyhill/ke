@@ -28,6 +28,11 @@ export class Player {
     return this._isVisible;
   }
 
+  public show(): void {
+    this._isVisible = true;
+    this._graphics.visible = true;
+  }
+
   public vanish(): void {
     this._isVisible = false;
     this._graphics.visible = false;
