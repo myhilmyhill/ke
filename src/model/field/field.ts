@@ -12,6 +12,7 @@ export class Field {
   protected screenHeight: number;
   protected screenWidth: number;
   protected waittimeNextBullet = 0;
+  protected waittimeNextEnemyBullet = 0;
   protected vx = 0;
   protected vy = 0;
   protected isSlow = false;
@@ -40,14 +41,14 @@ export class Field {
       { length: 1000 },
       () =>
         new MovingPlayer(
-          Math.random() * this.screenWidth,
-          Math.random() * this.screenHeight,
-          10,
+          0,
+          0,
+          5,
           (x, y, radius, graphics) => {
             graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
             app.stage.addChild(graphics);
           },
-          (self) => this.moveDiagonallyAndBounce(self),
+          (self) => (): void => self.vanish(),
         ),
     );
     this.myBullets = Array.from(
@@ -69,17 +70,6 @@ export class Field {
             }
 
             // Hit enemy
-            for (const bullet of this.bullets) {
-              if (
-                bullet.isVisible &&
-                self.isVisible &&
-                Coordinate.isCollided(self.hitarea, bullet.hitarea)
-              ) {
-                bullet.vanish();
-                self.vanish();
-              }
-            }
-
             for (const enemy of this.enemies) {
               if (
                 enemy.player.isVisible &&
@@ -111,37 +101,35 @@ export class Field {
     for (const myBullet of this.myBullets) {
       myBullet.move();
     }
+    this.launchEnemyBullet(this.enemies[0].player);
     this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
   }
 
-  moveDiagonallyAndBounce(self: MovingPlayer): () => void {
-    // Captured variables
-    const circle = self.hitarea;
-    let vx = Math.random() + 1;
-    let vy = Math.random();
+  launchEnemyBullet(enemy: Player): void {
+    if (!enemy.isVisible) return;
 
-    const invert = (): void => {
-      if (this.screenWidth <= circle.x + circle.radius) {
-        circle.x = this.screenWidth - circle.radius;
-        vx *= -1;
-      } else if (circle.x - circle.radius <= 0) {
-        circle.x = circle.radius;
-        vx *= -1;
+    // Shoot to protagonist
+    if (--this.waittimeNextEnemyBullet > 0) return;
+    const bullets = this.takeEmptyBullets(100);
+    for (let i = 0; i < 100; i++) {
+      bullets.next().value?.setFuncMoving((self) => {
+        return this.shootTo(self, enemy, this.protagonist, (i * Math.PI) / 50);
+      });
+    }
+    this.waittimeNextEnemyBullet = 10;
+  }
+
+  *takeEmptyBullets(
+    num: number,
+  ): Iterator<MovingPlayer, undefined, MovingPlayer> {
+    let taken = 0;
+    for (const bullet of this.bullets) {
+      if (taken >= num) return;
+      if (!bullet.isVisible) {
+        taken++;
+        yield bullet;
       }
-      if (this.screenHeight <= circle.y + circle.radius) {
-        circle.y = this.screenHeight - circle.radius;
-        vy *= -1;
-      } else if (circle.y - circle.radius <= 0) {
-        circle.y = circle.radius;
-        vy *= -1;
-      }
-    };
-    return (): void => {
-      circle.x += vx;
-      circle.y += vy;
-      invert();
-      this.determineHit(self);
-    };
+    }
   }
 
   determineHit(bullet: Player): void {
@@ -152,6 +140,38 @@ export class Field {
     ) {
       bullet.vanish();
     }
+  }
+
+  shootTo(
+    self: MovingPlayer,
+    from: Player,
+    to: Player,
+    tOffset: number,
+  ): () => void {
+    self.x = from.x;
+    self.y = from.y;
+    self.show();
+
+    const r = 5;
+    const t = Math.atan2(to.y - from.y, to.x - from.x) + tOffset;
+    const vx = Math.cos(t) * r;
+    const vy = Math.sin(t) * r;
+
+    return (): void => {
+      if (
+        self.x < -self.radius ||
+        self.y < -self.radius ||
+        self.x - self.radius > this.screenWidth ||
+        self.y - self.radius > this.screenHeight
+      ) {
+        self.vanish();
+        return;
+      }
+
+      self.x += vx;
+      self.y += vy;
+      this.determineHit(self);
+    };
   }
 
   // Controll the protagonist
