@@ -16,11 +16,7 @@ export class Main {
     document.body.appendChild(app.view);
     this.field = new Field(app, this.screenWidth, this.screenHeight);
 
-    InputPad.addButton(
-      'z',
-      () => this.field.launchBullet(),
-      () => this.field.launchBullet(),
-    );
+    InputPad.addButton('z', () => this.field.launchBullet());
     InputPad.addButton(
       'Shift',
       (): void => this.field.toggleSlow(true),

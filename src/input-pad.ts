@@ -5,8 +5,8 @@ export class InputPad {
   private static keys: {
     [key: string]: {
       isPressed: boolean;
-      pressFunc: () => void;
-      releaseFunc: () => void;
+      pressFunc?: () => void;
+      releaseFunc?: () => void;
     };
   } = {};
   private static _pressListener?: (event: KeyboardEvent) => void;
@@ -16,7 +16,10 @@ export class InputPad {
     const pressListener = (event: KeyboardEvent): void => {
       event.preventDefault();
       for (const [key, value] of Object.entries(this.keys)) {
-        if (event.key === key && !event.repeat) {
+        if (
+          event.key.localeCompare(key, 'en', { sensitivity: 'accent' }) === 0 &&
+          !event.repeat
+        ) {
           value.isPressed = true;
           // Do not call pressFunc because the `keydown` event will occur
           // after pressed once then repeat after a wait time.
@@ -26,9 +29,11 @@ export class InputPad {
     const releaseListener = (event: KeyboardEvent): void => {
       event.preventDefault();
       for (const [key, value] of Object.entries(this.keys)) {
-        if (event.key === key) {
+        if (
+          event.key.localeCompare(key, 'en', { sensitivity: 'accent' }) === 0
+        ) {
           value.isPressed = false;
-          value.releaseFunc();
+          value.releaseFunc?.();
         }
       }
     };
@@ -44,14 +49,14 @@ export class InputPad {
 
   public static fire(): void {
     for (const value of Object.values(this.keys)) {
-      if (value.isPressed) value.pressFunc();
+      if (value.isPressed) value.pressFunc?.();
     }
   }
 
   static addButton(
     key: string,
-    pressFunc: () => void,
-    releaseFunc: () => void,
+    pressFunc?: () => void,
+    releaseFunc?: () => void,
   ): void {
     this.keys[key] = { isPressed: false, pressFunc, releaseFunc };
     if (
