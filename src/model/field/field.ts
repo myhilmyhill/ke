@@ -5,6 +5,7 @@ import * as PIXI from 'pixi.js';
 
 export class Field {
   protected protagonist: Player;
+  protected enemies: { life: number; player: MovingPlayer }[];
   protected bullets: MovingPlayer[];
   protected myBullets: MovingPlayer[];
 
@@ -23,6 +24,18 @@ export class Field {
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
 
+    this.enemies = Array.from({ length: 2 }, (_, i) => ({
+      life: 100,
+      player: new MovingPlayer(
+        200,
+        100 + 100 * i,
+        30,
+        (x, y, radius, graphics) => {
+          graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+          app.stage.addChild(graphics);
+        },
+      ),
+    }));
     this.bullets = Array.from(
       { length: 1000 },
       () =>
@@ -64,6 +77,19 @@ export class Field {
               ) {
                 bullet.vanish();
                 self.vanish();
+              }
+            }
+
+            for (const enemy of this.enemies) {
+              if (
+                enemy.player.isVisible &&
+                self.isVisible &&
+                Coordinate.isCollided(self.hitarea, enemy.player.hitarea)
+              ) {
+                self.vanish();
+                if (--enemy.life <= 0) {
+                  enemy.player.vanish();
+                }
               }
             }
           },
@@ -118,7 +144,7 @@ export class Field {
     };
   }
 
-  determineHit(bullet: MovingPlayer): void {
+  determineHit(bullet: Player): void {
     // Determine the protagonist is hit by bulltes
     if (
       bullet.isVisible &&
