@@ -12,7 +12,6 @@ export class Field {
   protected screenHeight: number;
   protected screenWidth: number;
   protected waittimeNextBullet = 0;
-  protected waittimeNextEnemyBullet = 0;
   protected vx = 0;
   protected vy = 0;
   protected isSlow = false;
@@ -34,6 +33,37 @@ export class Field {
         (x, y, radius, graphics) => {
           graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
           app.stage.addChild(graphics);
+        },
+        (enemy) => {
+          // Captured variables
+          let waittime = 0;
+          let vx = Math.random() * 10;
+          return (): void => {
+            // Move
+            enemy.x += vx;
+            if (enemy.x + enemy.radius >= this.screenWidth) {
+              enemy.x = this.screenWidth - enemy.radius;
+              vx *= -1;
+            } else if (enemy.x <= enemy.radius) {
+              enemy.x = enemy.radius;
+              vx *= -1;
+            }
+
+            // Shoot to protagonist
+            if (--waittime > 0) return;
+            const bullets = this.takeEmptyBullets(100);
+            for (let i = 0; i < 100; i++) {
+              bullets.next().value?.setFuncMoving((self) => {
+                return this.shootTo(
+                  self,
+                  enemy,
+                  this.protagonist,
+                  (i * Math.PI) / 50,
+                );
+              });
+            }
+            waittime = 20;
+          };
         },
       ),
     }));
@@ -101,22 +131,10 @@ export class Field {
     for (const myBullet of this.myBullets) {
       myBullet.move();
     }
-    this.launchEnemyBullet(this.enemies[0].player);
-    this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
-  }
-
-  launchEnemyBullet(enemy: Player): void {
-    if (!enemy.isVisible) return;
-
-    // Shoot to protagonist
-    if (--this.waittimeNextEnemyBullet > 0) return;
-    const bullets = this.takeEmptyBullets(100);
-    for (let i = 0; i < 100; i++) {
-      bullets.next().value?.setFuncMoving((self) => {
-        return this.shootTo(self, enemy, this.protagonist, (i * Math.PI) / 50);
-      });
+    for (const enemy of this.enemies) {
+      enemy.player.move();
     }
-    this.waittimeNextEnemyBullet = 10;
+    this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
   }
 
   *takeEmptyBullets(
