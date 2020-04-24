@@ -2,7 +2,7 @@ import { Player } from './player';
 import { Graphics } from 'pixi.js';
 
 export class MovingPlayer extends Player {
-  private _funcMoving?: (() => void) | undefined;
+  private _actions: (() => void)[] = [];
 
   constructor(
     x: number,
@@ -14,21 +14,25 @@ export class MovingPlayer extends Player {
       radius: number,
       graphics: Graphics,
     ) => void,
-    funcMoving?: (self: MovingPlayer) => () => void,
   ) {
     super(x, y, radius, funcInitial);
-    this.setFuncMoving(funcMoving);
   }
 
-  public setFuncMoving(
-    funcMoving: ((self: MovingPlayer) => () => void) | undefined,
-  ): void {
-    this._funcMoving = funcMoving?.(this);
+  public addAction(action: (self: MovingPlayer) => () => void): MovingPlayer {
+    this._actions.push(action(this));
+    return this;
+  }
+
+  public deleteActions(): MovingPlayer {
+    this._actions = [];
+    return this;
   }
 
   public move(): void {
     if (this._isVisible) {
-      this._funcMoving?.();
+      for (const action of this._actions) {
+        action();
+      }
     }
   }
 }

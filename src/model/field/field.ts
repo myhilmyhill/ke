@@ -2,7 +2,7 @@ import { Coordinate } from '../character/coordinate';
 import { MovingPlayer } from '../character/moving-player';
 import { Player } from '../character/player';
 import * as PIXI from 'pixi.js';
-import { BulletShootingPattern } from './bullet-shooting-pattern';
+import { ActionPattern } from './action-pattern';
 
 export class Field {
   protected protagonist: Player;
@@ -35,27 +35,24 @@ export class Field {
           graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
           app.stage.addChild(graphics);
         },
-        (enemy) => {
+      )
+        .addAction((enemy) =>
+          ActionPattern.moveAndBounceX(
+            enemy,
+            Math.random() * 10,
+            this.screenWidth,
+          ),
+        )
+        .addAction((enemy) => {
           // Captured variables
           let waittime = 0;
-          let vx = Math.random() * 10;
           return (): void => {
-            // Move
-            enemy.x += vx;
-            if (enemy.x + enemy.radius >= this.screenWidth) {
-              enemy.x = this.screenWidth - enemy.radius;
-              vx *= -1;
-            } else if (enemy.x <= enemy.radius) {
-              enemy.x = enemy.radius;
-              vx *= -1;
-            }
-
             // Shoot to protagonist
             if (--waittime > 0) return;
-            BulletShootingPattern.shootZenhoui(
+            ActionPattern.shootRadially(
               enemy,
               this.protagonist,
-              this.takeEmptyBullets(100),
+              this.bullets,
               100,
               (bullet, execute) => {
                 if (this.isOutOfBound(bullet)) {
@@ -68,56 +65,39 @@ export class Field {
             );
             waittime = 20;
           };
-        },
-      ),
+        }),
     }));
-    this.bullets = Array.from(
-      { length: 1000 },
-      () =>
-        new MovingPlayer(
-          0,
-          0,
-          5,
-          (x, y, radius, graphics) => {
-            graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
-            app.stage.addChild(graphics);
-          },
-          (self) => (): void => self.vanish(),
-        ),
+    this.bullets = Array.from({ length: 1000 }, () =>
+      new MovingPlayer(0, 0, 5, (x, y, radius, graphics) => {
+        graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+        app.stage.addChild(graphics);
+      }).addAction((self) => {
+        self.vanish();
+        return (): void => undefined;
+      }),
     );
-    this.myBullets = Array.from(
-      { length: 30 },
-      () =>
-        new MovingPlayer(
-          0,
-          0,
-          5,
-          (x, y, radius, graphics) => {
-            graphics.beginFill(0x00ff00).drawCircle(x, y, radius).endFill();
-            app.stage.addChild(graphics);
-            graphics.visible = false;
-          },
-          (self) => (): void => {
-            self.y -= 10;
-            if (self.y < -self.radius) {
+    this.myBullets = Array.from({ length: 30 }, () =>
+      new MovingPlayer(0, 0, 5, (x, y, radius, graphics) => {
+        graphics.beginFill(0x00ff00).drawCircle(x, y, radius).endFill();
+        app.stage.addChild(graphics);
+        graphics.visible = false;
+      })
+        .addAction((self) => ActionPattern.moveY(self, -10))
+        .addAction((self) => (): void => {
+          // Hit enemy
+          for (const enemy of this.enemies) {
+            if (
+              enemy.player.isVisible &&
+              self.isVisible &&
+              Coordinate.isCollided(self.hitarea, enemy.player.hitarea)
+            ) {
               self.vanish();
-            }
-
-            // Hit enemy
-            for (const enemy of this.enemies) {
-              if (
-                enemy.player.isVisible &&
-                self.isVisible &&
-                Coordinate.isCollided(self.hitarea, enemy.player.hitarea)
-              ) {
-                self.vanish();
-                if (--enemy.life <= 0) {
-                  enemy.player.vanish();
-                }
+              if (--enemy.life <= 0) {
+                enemy.player.vanish();
               }
             }
-          },
-        ),
+          }
+        }),
     );
 
     this.protagonist = new Player(0, 0, 32, (x, y, radius, graphics) => {
@@ -139,19 +119,6 @@ export class Field {
       enemy.player.move();
     }
     this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
-  }
-
-  *takeEmptyBullets(
-    num: number,
-  ): Iterator<MovingPlayer, undefined, MovingPlayer> {
-    let taken = 0;
-    for (const bullet of this.bullets) {
-      if (taken >= num) return;
-      if (!bullet.isVisible) {
-        taken++;
-        yield bullet;
-      }
-    }
   }
 
   determineHit(bullet: Player): void {
