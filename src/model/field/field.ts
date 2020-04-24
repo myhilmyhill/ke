@@ -2,6 +2,7 @@ import { Coordinate } from '../character/coordinate';
 import { MovingPlayer } from '../character/moving-player';
 import { Player } from '../character/player';
 import * as PIXI from 'pixi.js';
+import { BulletShootingPattern } from './bullet-shooting-pattern';
 
 export class Field {
   protected protagonist: Player;
@@ -51,17 +52,20 @@ export class Field {
 
             // Shoot to protagonist
             if (--waittime > 0) return;
-            const bullets = this.takeEmptyBullets(100);
-            for (let i = 0; i < 100; i++) {
-              bullets.next().value?.setFuncMoving((self) => {
-                return this.shootTo(
-                  self,
-                  enemy,
-                  this.protagonist,
-                  (i * Math.PI) / 50,
-                );
-              });
-            }
+            BulletShootingPattern.shootZenhoui(
+              enemy,
+              this.protagonist,
+              this.takeEmptyBullets(100),
+              100,
+              (bullet, execute) => {
+                if (this.isOutOfBound(bullet)) {
+                  bullet.vanish();
+                  return;
+                }
+                execute();
+                this.determineHit(bullet);
+              },
+            );
             waittime = 20;
           };
         },
@@ -160,36 +164,13 @@ export class Field {
     }
   }
 
-  shootTo(
-    self: MovingPlayer,
-    from: Player,
-    to: Player,
-    tOffset: number,
-  ): () => void {
-    self.x = from.x;
-    self.y = from.y;
-    self.show();
-
-    const r = 5;
-    const t = Math.atan2(to.y - from.y, to.x - from.x) + tOffset;
-    const vx = Math.cos(t) * r;
-    const vy = Math.sin(t) * r;
-
-    return (): void => {
-      if (
-        self.x < -self.radius ||
-        self.y < -self.radius ||
-        self.x - self.radius > this.screenWidth ||
-        self.y - self.radius > this.screenHeight
-      ) {
-        self.vanish();
-        return;
-      }
-
-      self.x += vx;
-      self.y += vy;
-      this.determineHit(self);
-    };
+  isOutOfBound(self: Player): boolean {
+    return (
+      self.x < -self.radius ||
+      self.y < -self.radius ||
+      self.x - self.radius > this.screenWidth ||
+      self.y - self.radius > this.screenHeight
+    );
   }
 
   // Controll the protagonist
