@@ -71,7 +71,8 @@ export class InputPad {
     delete this.keys[key];
   }
 
-  static removeListener(): void {
+  static removeAllButtons(): void {
+    this.keys = {};
     if (this._pressListener !== undefined) {
       document.removeEventListener('keydown', this._pressListener);
       this._pressListener = undefined;

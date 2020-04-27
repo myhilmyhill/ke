@@ -10,6 +10,7 @@ export class Field {
   protected bullets: MovingPlayer[];
   protected myBullets: MovingPlayer[];
 
+  protected app: PIXI.Application;
   protected screenHeight: number;
   protected screenWidth: number;
   protected waittimeNextBullet = 0;
@@ -22,6 +23,7 @@ export class Field {
     screenWidth: number,
     screenHeight: number,
   ) {
+    this.app = app;
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
 
@@ -104,6 +106,10 @@ export class Field {
       graphics.beginFill(0xff0000).drawCircle(x, y, radius).endFill();
       app.stage.addChild(graphics);
     });
+  }
+
+  dispose(): void {
+    this.app.stage.removeChildren();
   }
 
   loop(): void {
