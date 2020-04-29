@@ -1,5 +1,6 @@
 import { MovingPlayer } from '../character/moving-player';
 import { Player } from '../character/player';
+import { Coordinate } from '../character/coordinate';
 
 export class ActionPattern {
   private static *takeEmptyPlayers(
@@ -16,28 +17,23 @@ export class ActionPattern {
     }
   }
 
-  static moveY(self: MovingPlayer, y: number): () => void {
-    return (): void => {
-      self.y += y;
-      if (self.y < -self.radius) {
-        self.vanish();
-      }
-    };
-  }
-
-  static moveAndBounceX(
+  static move(
     self: MovingPlayer,
     x: number,
-    screenWidth: number,
+    y: number,
+    screenWidth?: number,
+    screenHeight?: number,
   ): () => void {
     return (): void => {
       self.x += x;
-      if (self.x + self.radius >= screenWidth) {
-        self.x = screenWidth - self.radius;
-        x *= -1;
-      } else if (self.x <= self.radius) {
-        self.x = self.radius;
-        x *= -1;
+      self.y += y;
+      if (
+        self.x + self.radius <= 0 ||
+        self.y + self.radius <= 0 ||
+        (screenWidth && self.x - self.radius >= screenWidth) ||
+        (screenHeight && self.y - self.radius >= screenHeight)
+      ) {
+        self.vanish();
       }
     };
   }
@@ -54,7 +50,7 @@ export class ActionPattern {
       showingBullets
         .next()
         .value?.deleteActions()
-        .addAction((bullet) => {
+        ?.addAction((bullet) => {
           bullet.x = from.x;
           bullet.y = from.y;
           bullet.show();
@@ -74,5 +70,25 @@ export class ActionPattern {
           };
         });
     }
+  }
+
+  static hitAndVanish(
+    bullet: Player,
+    targets: Player[],
+    action: (target: Player) => void,
+  ): () => void {
+    return (): void => {
+      // Hit enemy
+      for (const target of targets) {
+        if (
+          target.isVisible &&
+          bullet.isVisible &&
+          Coordinate.isCollided(bullet.hitarea, target.hitarea)
+        ) {
+          bullet.vanish();
+          action(target);
+        }
+      }
+    };
   }
 }

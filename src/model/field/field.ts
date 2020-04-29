@@ -3,10 +3,12 @@ import { MovingPlayer } from '../character/moving-player';
 import { Player } from '../character/player';
 import * as PIXI from 'pixi.js';
 import { ActionPattern } from './action-pattern';
+import { PatterningPlayer } from '../character/patterning-player';
+import { EnemyPattern } from './enemy-pattern';
 
 export class Field {
   protected protagonist: Player;
-  protected enemies: { life: number; player: MovingPlayer }[];
+  protected enemies: { life: number; player: PatterningPlayer }[];
   protected bullets: MovingPlayer[];
   protected myBullets: MovingPlayer[];
 
@@ -17,6 +19,55 @@ export class Field {
   protected vx = 0;
   protected vy = 0;
   protected isSlow = false;
+
+  *pattern(enemy: PatterningPlayer): IterableIterator<() => void> {
+    const vx = Math.random() * 10;
+    for (;;) {
+      while (!(enemy.x + enemy.radius >= this.screenWidth)) {
+        yield ActionPattern.move(enemy, vx, 0);
+      }
+
+      yield* EnemyPattern.wait(20);
+
+      yield (): void =>
+        ActionPattern.shootRadially(
+          enemy,
+          this.protagonist,
+          this.bullets,
+          10,
+          (bullet, execute) => {
+            if (this.isOutOfBound(bullet)) {
+              bullet.vanish();
+              return;
+            }
+            execute();
+            this.determineHit(bullet);
+          },
+        );
+
+      while (!(enemy.x <= enemy.radius)) {
+        yield ActionPattern.move(enemy, -vx, 0);
+      }
+
+      yield* EnemyPattern.wait(100);
+
+      yield (): void =>
+        ActionPattern.shootRadially(
+          enemy,
+          this.protagonist,
+          this.bullets,
+          100,
+          (bullet, execute) => {
+            if (this.isOutOfBound(bullet)) {
+              bullet.vanish();
+              return;
+            }
+            execute();
+            this.determineHit(bullet);
+          },
+        );
+    }
+  }
 
   constructor(
     app: PIXI.Application,
@@ -29,7 +80,7 @@ export class Field {
 
     this.enemies = Array.from({ length: 2 }, (_, i) => ({
       life: 100,
-      player: new MovingPlayer(
+      player: new PatterningPlayer(
         200,
         100 + 100 * i,
         30,
@@ -37,37 +88,7 @@ export class Field {
           graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
           app.stage.addChild(graphics);
         },
-      )
-        .addAction((enemy) =>
-          ActionPattern.moveAndBounceX(
-            enemy,
-            Math.random() * 10,
-            this.screenWidth,
-          ),
-        )
-        .addAction((enemy) => {
-          // Captured variables
-          let waittime = 0;
-          return (): void => {
-            // Shoot to protagonist
-            if (--waittime > 0) return;
-            ActionPattern.shootRadially(
-              enemy,
-              this.protagonist,
-              this.bullets,
-              100,
-              (bullet, execute) => {
-                if (this.isOutOfBound(bullet)) {
-                  bullet.vanish();
-                  return;
-                }
-                execute();
-                this.determineHit(bullet);
-              },
-            );
-            waittime = 20;
-          };
-        }),
+      ).addActionPattern((enemy) => this.pattern(enemy)),
     }));
     this.bullets = Array.from({ length: 1000 }, () =>
       new MovingPlayer(0, 0, 5, (x, y, radius, graphics) => {
@@ -84,22 +105,22 @@ export class Field {
         app.stage.addChild(graphics);
         graphics.visible = false;
       })
-        .addAction((self) => ActionPattern.moveY(self, -10))
-        .addAction((self) => (): void => {
-          // Hit enemy
-          for (const enemy of this.enemies) {
-            if (
-              enemy.player.isVisible &&
-              self.isVisible &&
-              Coordinate.isCollided(self.hitarea, enemy.player.hitarea)
-            ) {
-              self.vanish();
-              if (--enemy.life <= 0) {
-                enemy.player.vanish();
+        .addAction((self) => ActionPattern.move(self, 0, -10))
+        .addAction((self) =>
+          ActionPattern.hitAndVanish(
+            self,
+            this.enemies.map((i) => i.player),
+            (enemy) => {
+              const index = this.enemies.findIndex((i) => i.player === enemy);
+              if (index > 0) {
+                const life = this.enemies[index].life--;
+                if (life <= 0) {
+                  enemy.vanish();
+                }
               }
-            }
-          }
-        }),
+            },
+          ),
+        ),
     );
 
     this.protagonist = new Player(0, 0, 32, (x, y, radius, graphics) => {
