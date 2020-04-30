@@ -36,7 +36,13 @@ export class Field {
           this.bullets,
           10,
           (bullet, execute) => {
-            if (this.isOutOfBound(bullet)) {
+            if (
+              ActionPattern.isOutOfBound(
+                bullet,
+                this.screenWidth,
+                this.screenHeight,
+              )
+            ) {
               bullet.vanish();
               return;
             }
@@ -58,7 +64,13 @@ export class Field {
           this.bullets,
           100,
           (bullet, execute) => {
-            if (this.isOutOfBound(bullet)) {
+            if (
+              ActionPattern.isOutOfBound(
+                bullet,
+                this.screenWidth,
+                this.screenHeight,
+              )
+            ) {
               bullet.vanish();
               return;
             }
@@ -153,15 +165,6 @@ export class Field {
     ) {
       bullet.vanish();
     }
-  }
-
-  isOutOfBound(self: Player): boolean {
-    return (
-      self.x < -self.radius ||
-      self.y < -self.radius ||
-      self.x - self.radius > this.screenWidth ||
-      self.y - self.radius > this.screenHeight
-    );
   }
 
   // Controll the protagonist

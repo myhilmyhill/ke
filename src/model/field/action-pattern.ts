@@ -17,6 +17,19 @@ export class ActionPattern {
     }
   }
 
+  static isOutOfBound(
+    self: Player,
+    screenWidth: number | undefined,
+    screenHeight: number | undefined,
+  ): boolean {
+    return (
+      self.x + self.radius <= 0 ||
+      self.y + self.radius <= 0 ||
+      (screenWidth !== undefined && self.x - self.radius >= screenWidth) ||
+      (screenHeight !== undefined && self.y - self.radius >= screenHeight)
+    );
+  }
+
   static move(
     self: MovingPlayer,
     x: number,
