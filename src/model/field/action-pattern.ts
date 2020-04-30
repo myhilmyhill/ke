@@ -51,9 +51,7 @@ export class ActionPattern {
         .next()
         .value?.deleteActions()
         ?.addAction((bullet) => {
-          bullet.x = from.x;
-          bullet.y = from.y;
-          bullet.show();
+          bullet.show(from.x, from.y);
 
           // Set angle
           const r = 5;

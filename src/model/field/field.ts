@@ -80,30 +80,27 @@ export class Field {
 
     this.enemies = Array.from({ length: 2 }, (_, i) => ({
       life: 100,
-      player: new PatterningPlayer(
-        200,
-        100 + 100 * i,
-        30,
-        (x, y, radius, graphics) => {
-          graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
-          app.stage.addChild(graphics);
-        },
-      ).addActionPattern((enemy) => this.pattern(enemy)),
-    }));
-    this.bullets = Array.from({ length: 1000 }, () =>
-      new MovingPlayer(0, 0, 5, (x, y, radius, graphics) => {
+      player: new PatterningPlayer(30, (x, y, radius, graphics) => {
         graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
         app.stage.addChild(graphics);
-      }).addAction((self) => {
-        self.vanish();
-        return (): void => undefined;
-      }),
+      })
+        .show(200, 100 + 100 * i)
+        .addActionPattern((enemy) => this.pattern(enemy)),
+    }));
+
+    this.bullets = Array.from(
+      { length: 1000 },
+      () =>
+        new MovingPlayer(5, (x, y, radius, graphics) => {
+          graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+          app.stage.addChild(graphics);
+        }),
     );
+
     this.myBullets = Array.from({ length: 30 }, () =>
-      new MovingPlayer(0, 0, 5, (x, y, radius, graphics) => {
+      new MovingPlayer(5, (x, y, radius, graphics) => {
         graphics.beginFill(0x00ff00).drawCircle(x, y, radius).endFill();
         app.stage.addChild(graphics);
-        graphics.visible = false;
       })
         .addAction((self) => ActionPattern.move(self, 0, -10))
         .addAction((self) =>
@@ -123,10 +120,10 @@ export class Field {
         ),
     );
 
-    this.protagonist = new Player(0, 0, 32, (x, y, radius, graphics) => {
+    this.protagonist = new Player(32, (x, y, radius, graphics) => {
       graphics.beginFill(0xff0000).drawCircle(x, y, radius).endFill();
       app.stage.addChild(graphics);
-    });
+    }).show(0, 0);
   }
 
   dispose(): void {
@@ -175,9 +172,10 @@ export class Field {
     let single = false;
     for (const myBullet of this.myBullets) {
       if (myBullet.isVisible) continue;
-      myBullet.show();
-      myBullet.x = this.protagonist.x + (single ? 10 : -10);
-      myBullet.y = this.protagonist.y;
+      myBullet.show(
+        this.protagonist.x + (single ? 10 : -10),
+        this.protagonist.y,
+      );
       if (single) return;
       single = true;
       this.waittimeNextBullet = 5;

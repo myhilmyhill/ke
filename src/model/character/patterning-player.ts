@@ -5,8 +5,6 @@ export class PatterningPlayer extends MovingPlayer {
   private pattern?: IterableIterator<() => void>;
 
   constructor(
-    x: number,
-    y: number,
     radius: number,
     funcInitial: (
       x: number,
@@ -15,7 +13,7 @@ export class PatterningPlayer extends MovingPlayer {
       graphics: Graphics,
     ) => void,
   ) {
-    super(x, y, radius, funcInitial);
+    super(radius, funcInitial);
   }
 
   public addActionPattern(

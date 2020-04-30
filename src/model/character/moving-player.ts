@@ -5,8 +5,6 @@ export class MovingPlayer extends Player {
   private _actions: (() => void)[] = [];
 
   constructor(
-    x: number,
-    y: number,
     radius: number,
     funcInitial: (
       x: number,
@@ -15,7 +13,7 @@ export class MovingPlayer extends Player {
       graphics: Graphics,
     ) => void,
   ) {
-    super(x, y, radius, funcInitial);
+    super(radius, funcInitial);
   }
 
   public addAction(action: (self: MovingPlayer) => () => void): MovingPlayer {
