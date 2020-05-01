@@ -18,12 +18,18 @@ export class PatterningPlayer extends MovingPlayer {
 
   public addActionPattern(
     pattern: (enemy: PatterningPlayer) => IterableIterator<() => void>,
-  ): PatterningPlayer {
+  ): this {
     this.pattern = pattern(this);
     return this;
   }
 
+  public deleteActionPattern(): this {
+    this.pattern = undefined;
+    return this;
+  }
+
   public move(): void {
+    super.move();
     if (this._isVisible) {
       this.pattern?.next().value?.();
     }

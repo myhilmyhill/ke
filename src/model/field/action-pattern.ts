@@ -1,12 +1,14 @@
 import { MovingPlayer } from '../character/moving-player';
 import { Player } from '../character/player';
 import { Coordinate } from '../character/coordinate';
+import { PatterningPlayer } from '../character/patterning-player';
+import { EnemyPattern } from './enemy-pattern';
 
 export class ActionPattern {
-  private static *takeEmptyPlayers(
+  private static *takeEmptyPlayers<TPlayer extends Player>(
     num: number,
-    players: MovingPlayer[],
-  ): Iterator<MovingPlayer, undefined, MovingPlayer> {
+    players: TPlayer[],
+  ): Iterator<TPlayer, undefined, TPlayer> {
     let taken = 0;
     for (const player of players) {
       if (taken >= num) return;
@@ -15,6 +17,51 @@ export class ActionPattern {
         yield player;
       }
     }
+  }
+
+  private static moveByFunction(
+    self: Player,
+    funcX: (t: number) => number,
+    funcY: (t: number) => number,
+    screenWidth?: number,
+    screenHeight?: number,
+  ): () => void {
+    let t = 0;
+    return (): void => {
+      if (this.isOutOfBound(self, screenWidth, screenHeight)) {
+        self.vanish();
+        return;
+      }
+      self.x = funcX(t);
+      self.y = funcY(t);
+      t++;
+    };
+  }
+
+  static *moveMultipleAtInterval(
+    num: number,
+    interval: number,
+    enemies: PatterningPlayer[],
+    funcX: (t: number) => number,
+    funcY: (t: number) => number,
+    pattern: (enemy: PatterningPlayer) => IterableIterator<() => void>,
+    screenWidth: number | undefined,
+    screenHeight: number | undefined,
+  ): IterableIterator<() => void> {
+    for (let i = 0; i < num; i++) {
+      const showingEnemies = this.takeEmptyPlayers(1, enemies);
+      showingEnemies
+        .next()
+        .value?.show(funcX(0), funcY(0))
+        .deleteActions()
+        .addAction((enemy) =>
+          this.moveByFunction(enemy, funcX, funcY, screenWidth, screenHeight),
+        )
+        .addActionPattern((enemy) => pattern(enemy));
+
+      yield* EnemyPattern.wait(interval);
+    }
+    return;
   }
 
   static isOutOfBound(
@@ -40,12 +87,7 @@ export class ActionPattern {
     return (): void => {
       self.x += x;
       self.y += y;
-      if (
-        self.x + self.radius <= 0 ||
-        self.y + self.radius <= 0 ||
-        (screenWidth && self.x - self.radius >= screenWidth) ||
-        (screenHeight && self.y - self.radius >= screenHeight)
-      ) {
+      if (this.isOutOfBound(self, screenWidth, screenHeight)) {
         self.vanish();
       }
     };

@@ -11,6 +11,7 @@ export class Field {
   protected enemies: { life: number; player: PatterningPlayer }[];
   protected bullets: MovingPlayer[];
   protected myBullets: MovingPlayer[];
+  protected enemyPattern: IterableIterator<() => void>;
 
   protected app: PIXI.Application;
   protected screenHeight: number;
@@ -21,14 +22,7 @@ export class Field {
   protected isSlow = false;
 
   *pattern(enemy: PatterningPlayer): IterableIterator<() => void> {
-    const vx = Math.random() * 10;
     for (;;) {
-      while (!(enemy.x + enemy.radius >= this.screenWidth)) {
-        yield ActionPattern.move(enemy, vx, 0);
-      }
-
-      yield* EnemyPattern.wait(20);
-
       yield (): void =>
         ActionPattern.shootRadially(
           enemy,
@@ -51,33 +45,7 @@ export class Field {
           },
         );
 
-      while (!(enemy.x <= enemy.radius)) {
-        yield ActionPattern.move(enemy, -vx, 0);
-      }
-
-      yield* EnemyPattern.wait(100);
-
-      yield (): void =>
-        ActionPattern.shootRadially(
-          enemy,
-          this.protagonist,
-          this.bullets,
-          100,
-          (bullet, execute) => {
-            if (
-              ActionPattern.isOutOfBound(
-                bullet,
-                this.screenWidth,
-                this.screenHeight,
-              )
-            ) {
-              bullet.vanish();
-              return;
-            }
-            execute();
-            this.determineHit(bullet);
-          },
-        );
+      yield* EnemyPattern.wait(20);
     }
   }
 
@@ -90,14 +58,12 @@ export class Field {
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
 
-    this.enemies = Array.from({ length: 2 }, (_, i) => ({
+    this.enemies = Array.from({ length: 20 }, () => ({
       life: 100,
       player: new PatterningPlayer(30, (x, y, radius, graphics) => {
         graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
         app.stage.addChild(graphics);
-      })
-        .show(200, 100 + 100 * i)
-        .addActionPattern((enemy) => this.pattern(enemy)),
+      }),
     }));
 
     this.bullets = Array.from(
@@ -136,6 +102,17 @@ export class Field {
       graphics.beginFill(0xff0000).drawCircle(x, y, radius).endFill();
       app.stage.addChild(graphics);
     }).show(0, 0);
+
+    this.enemyPattern = ActionPattern.moveMultipleAtInterval(
+      100,
+      30,
+      this.enemies.map((i) => i.player),
+      (t) => Math.sin(t / 120.0) * 200,
+      (t) => -Math.cos(t / 120.0) * 200 + 200,
+      (self) => this.pattern(self),
+      this.screenWidth,
+      this.screenHeight,
+    );
   }
 
   dispose(): void {
@@ -155,6 +132,7 @@ export class Field {
       enemy.player.move();
     }
     this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
+    this.enemyPattern.next().value?.();
   }
 
   determineHit(bullet: Player): void {

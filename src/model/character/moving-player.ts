@@ -16,12 +16,12 @@ export class MovingPlayer extends Player {
     super(radius, funcInitial);
   }
 
-  public addAction(action: (self: MovingPlayer) => () => void): MovingPlayer {
+  public addAction(action: (self: MovingPlayer) => () => void): this {
     this._actions.push(action(this));
     return this;
   }
 
-  public deleteActions(): MovingPlayer {
+  public deleteActions(): this {
     this._actions = [];
     return this;
   }
