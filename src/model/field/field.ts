@@ -15,6 +15,8 @@ export class Field {
   protected enemies: ViableMovingPlayer[];
   protected bullets: MovingPlayer[];
   protected myBullets: MovingPlayer[];
+
+  protected effects: PatterningPlayer[] = [];
   protected enemyPattern: IterableIterator<() => void>;
 
   protected app: PIXI.Application;
@@ -63,13 +65,54 @@ export class Field {
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
 
-    this.enemies = Array.from(
-      { length: 20 },
-      () =>
-        new ViableMovingPlayer(30, (x, y, radius, graphics) => {
-          graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+    this.enemies = Array.from({ length: 20 }, () =>
+      new ViableMovingPlayer(30, (x, y, radius, graphics) => {
+        graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+        app.stage.addChild(graphics);
+      }).setFuncVanishing((x, y, radius) => {
+        const explosion = new PatterningPlayer(0, (x, y, radius, graphics) => {
           app.stage.addChild(graphics);
-        }),
+        }).show(0, 0);
+        this.effects.push(explosion);
+        explosion.addActionPattern(function* () {
+          for (let r = radius / 2; r <= radius * 2; r += 5) {
+            /**
+             * @see https://gist.github.com/markknol/5c5d48655ebac555a6eec41792acdfb6
+             */
+            const oval = (
+              g: PIXI.Graphics,
+              r: number,
+              cx: number,
+              cy: number,
+            ): PIXI.Graphics => {
+              const lx = cx - r;
+              const rx = cx + r;
+              const ty = cy - r;
+              const by = cy + r;
+
+              const magic = 0.551915024494;
+              const xmagic = magic * r;
+              const ymagic = r * magic;
+
+              g.moveTo(cx, ty);
+              g.bezierCurveTo(cx + xmagic, ty, rx, cy - ymagic, rx, cy);
+              g.bezierCurveTo(rx, cy + ymagic, cx + xmagic, by, cx, by);
+              g.bezierCurveTo(cx - xmagic, by, lx, cy + ymagic, lx, cy);
+              g.bezierCurveTo(lx, cy - ymagic, cx - xmagic, ty, cx, ty);
+
+              return g;
+            };
+            const g = new PIXI.Graphics();
+            g.beginFill(0x0000ff);
+            oval(g, radius * 2, x, y);
+            g.beginHole();
+            oval(g, r, x, y);
+            app.stage.addChild(g);
+            yield (): void => undefined;
+            app.stage.removeChild(g);
+          }
+        });
+      }),
     );
 
     this.bullets = Array.from(
@@ -129,6 +172,9 @@ export class Field {
     }
     for (const enemy of this.enemies) {
       enemy.move();
+    }
+    for (const effect of this.effects) {
+      effect.move();
     }
     this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
     this.enemyPattern.next().value?.();
