@@ -5,10 +5,14 @@ import * as PIXI from 'pixi.js';
 import { ActionPattern } from './action-pattern';
 import { PatterningPlayer } from '../character/patterning-player';
 import { EnemyPattern } from './enemy-pattern';
+import { Life, Viable } from './viable';
+
+const ViableMovingPlayer = Viable(PatterningPlayer);
+type ViableMovingPlayer = Life & PatterningPlayer;
 
 export class Field {
   protected protagonist: Player;
-  protected enemies: { life: number; player: PatterningPlayer }[];
+  protected enemies: ViableMovingPlayer[];
   protected bullets: MovingPlayer[];
   protected myBullets: MovingPlayer[];
   protected enemyPattern: IterableIterator<() => void>;
@@ -21,7 +25,8 @@ export class Field {
   protected vy = 0;
   protected isSlow = false;
 
-  *pattern(enemy: PatterningPlayer): IterableIterator<() => void> {
+  *pattern(enemy: ViableMovingPlayer): IterableIterator<() => void> {
+    enemy.life = 5;
     for (;;) {
       yield (): void =>
         ActionPattern.shootRadially(
@@ -58,13 +63,14 @@ export class Field {
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
 
-    this.enemies = Array.from({ length: 20 }, () => ({
-      life: 100,
-      player: new PatterningPlayer(30, (x, y, radius, graphics) => {
-        graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
-        app.stage.addChild(graphics);
-      }),
-    }));
+    this.enemies = Array.from(
+      { length: 20 },
+      () =>
+        new ViableMovingPlayer(30, (x, y, radius, graphics) => {
+          graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
+          app.stage.addChild(graphics);
+        }),
+    );
 
     this.bullets = Array.from(
       { length: 1000 },
@@ -82,19 +88,12 @@ export class Field {
       })
         .addAction((self) => ActionPattern.move(self, 0, -10))
         .addAction((self) =>
-          ActionPattern.hitAndVanish(
-            self,
-            this.enemies.map((i) => i.player),
-            (enemy) => {
-              const index = this.enemies.findIndex((i) => i.player === enemy);
-              if (index > 0) {
-                const life = this.enemies[index].life--;
-                if (life <= 0) {
-                  enemy.vanish();
-                }
-              }
-            },
-          ),
+          ActionPattern.hitAndVanish(self, this.enemies, (enemy) => {
+            const e = enemy as ViableMovingPlayer;
+            if (--e.life <= 0) {
+              enemy.vanish();
+            }
+          }),
         ),
     );
 
@@ -106,10 +105,10 @@ export class Field {
     this.enemyPattern = ActionPattern.moveMultipleAtInterval(
       100,
       30,
-      this.enemies.map((i) => i.player),
-      (t) => Math.sin(t / 120.0) * 200,
-      (t) => -Math.cos(t / 120.0) * 200 + 200,
-      (self) => this.pattern(self),
+      this.enemies,
+      (t) => Math.sin(t / 360.0) * 200,
+      (t) => -Math.cos(t / 360.0) * 200 + 200,
+      (self) => this.pattern(self as ViableMovingPlayer),
       this.screenWidth,
       this.screenHeight,
     );
@@ -129,7 +128,7 @@ export class Field {
       myBullet.move();
     }
     for (const enemy of this.enemies) {
-      enemy.player.move();
+      enemy.move();
     }
     this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
     this.enemyPattern.next().value?.();
