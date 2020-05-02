@@ -1,4 +1,5 @@
 import { Graphics } from 'pixi.js';
+import { Player } from '../character/player';
 
 export class EnemyPattern {
   static *wait(time: number): IterableIterator<() => void> {
@@ -37,13 +38,17 @@ export class EnemyPattern {
   }
 
   static *explode(
-    g: Graphics,
+    effect: Player,
     x: number,
     y: number,
     radius: number,
     func: (graphics: Graphics, radius: number) => void,
   ): IterableIterator<() => void> {
-    for (let r = radius / 2; r <= radius * 2; r += 5) {
+    const g = effect.graphics;
+    effect.x = x;
+    effect.y = y;
+    const maxRadius = radius * 2;
+    for (let r = radius / 2; r <= maxRadius; r += 5) {
       /**
        * @see https://gist.github.com/markknol/5c5d48655ebac555a6eec41792acdfb6
        */
@@ -71,10 +76,11 @@ export class EnemyPattern {
         return g;
       };
 
+      effect.hitarea.radius = r;
       g.beginFill(0x0000ff);
-      oval(g, radius * 2, x, y);
+      oval(g, maxRadius, 0, 0);
       g.beginHole();
-      oval(g, r, x, y);
+      oval(g, r, 0, 0);
       yield (): void => func(g, r);
       g.clear();
     }

@@ -1,4 +1,4 @@
-import { Coordinate, Circle } from '../character/coordinate';
+import { Coordinate } from '../character/coordinate';
 import { MovingPlayer } from '../character/moving-player';
 import { Player } from '../character/player';
 import * as PIXI from 'pixi.js';
@@ -62,16 +62,20 @@ export class Field {
     radius: number,
     effect: Player,
   ): IterableIterator<() => void> {
-    yield* EnemyPattern.explode(effect.graphics, x, y, radius, (_, r) => {
-      const point = new PIXI.Point(x, y);
-      const inside = new Circle({ point, radius: r });
+    yield* EnemyPattern.explode(effect, x, y, radius, () => {
       for (const bullet of this.bullets) {
-        if (bullet.isVisible && Coordinate.isCollided(inside, bullet.hitarea)) {
+        if (
+          bullet.isVisible &&
+          Coordinate.isCollided(effect.hitarea, bullet.hitarea)
+        ) {
           bullet.vanish();
         }
       }
       for (const enemy of this.enemies) {
-        if (enemy.isVisible && Coordinate.isCollided(inside, enemy.hitarea)) {
+        if (
+          enemy.isVisible &&
+          Coordinate.isCollided(effect.hitarea, enemy.hitarea)
+        ) {
           this.hitEnemy(enemy, 1);
         }
       }
