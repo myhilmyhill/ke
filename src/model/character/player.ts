@@ -3,14 +3,8 @@ import { Circle } from './coordinate';
 
 export class Player {
   protected _hitarea: Circle;
-  public _graphics: Graphics;
+  protected _graphics: Graphics;
   protected _isVisible = true;
-  protected funcVanishing?: (
-    x: number,
-    y: number,
-    radius: number,
-    graphics: Graphics,
-  ) => void;
 
   public get hitarea(): Circle {
     return this._hitarea;
@@ -34,19 +28,11 @@ export class Player {
   public get radius(): number {
     return this._hitarea.radius;
   }
+  public get graphics(): Graphics {
+    return this._graphics;
+  }
   public get isVisible(): boolean {
     return this._isVisible;
-  }
-  public setFuncVanishing(
-    funcVanishing: (
-      x: number,
-      y: number,
-      radius: number,
-      graphics: Graphics,
-    ) => void,
-  ): this {
-    this.funcVanishing = funcVanishing;
-    return this;
   }
 
   public show(x: number, y: number): this {
@@ -58,7 +44,6 @@ export class Player {
   }
 
   public vanish(): this {
-    this.funcVanishing?.(this.x, this.y, this.radius, this._graphics);
     this._isVisible = false;
     this._graphics.visible = false;
     return this;

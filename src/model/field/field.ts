@@ -16,7 +16,7 @@ export class Field {
   protected bullets: MovingPlayer[];
   protected myBullets: MovingPlayer[];
 
-  protected effects: PatterningPlayer[] = [];
+  protected effects: PatterningPlayer[];
   protected enemyPattern: IterableIterator<() => void>;
 
   protected app: PIXI.Application;
@@ -65,54 +65,13 @@ export class Field {
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
 
-    this.enemies = Array.from({ length: 20 }, () =>
-      new ViableMovingPlayer(30, (x, y, radius, graphics) => {
-        graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
-        app.stage.addChild(graphics);
-      }).setFuncVanishing((x, y, radius) => {
-        const explosion = new PatterningPlayer(0, (x, y, radius, graphics) => {
+    this.enemies = Array.from(
+      { length: 20 },
+      () =>
+        new ViableMovingPlayer(30, (x, y, radius, graphics) => {
+          graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
           app.stage.addChild(graphics);
-        }).show(0, 0);
-        this.effects.push(explosion);
-        explosion.addActionPattern(function* () {
-          for (let r = radius / 2; r <= radius * 2; r += 5) {
-            /**
-             * @see https://gist.github.com/markknol/5c5d48655ebac555a6eec41792acdfb6
-             */
-            const oval = (
-              g: PIXI.Graphics,
-              r: number,
-              cx: number,
-              cy: number,
-            ): PIXI.Graphics => {
-              const lx = cx - r;
-              const rx = cx + r;
-              const ty = cy - r;
-              const by = cy + r;
-
-              const magic = 0.551915024494;
-              const xmagic = magic * r;
-              const ymagic = r * magic;
-
-              g.moveTo(cx, ty);
-              g.bezierCurveTo(cx + xmagic, ty, rx, cy - ymagic, rx, cy);
-              g.bezierCurveTo(rx, cy + ymagic, cx + xmagic, by, cx, by);
-              g.bezierCurveTo(cx - xmagic, by, lx, cy + ymagic, lx, cy);
-              g.bezierCurveTo(lx, cy - ymagic, cx - xmagic, ty, cx, ty);
-
-              return g;
-            };
-            const g = new PIXI.Graphics();
-            g.beginFill(0x0000ff);
-            oval(g, radius * 2, x, y);
-            g.beginHole();
-            oval(g, r, x, y);
-            app.stage.addChild(g);
-            yield (): void => undefined;
-            app.stage.removeChild(g);
-          }
-        });
-      }),
+        }),
     );
 
     this.bullets = Array.from(
@@ -134,6 +93,17 @@ export class Field {
           ActionPattern.hitAndVanish(self, this.enemies, (enemy) => {
             const e = enemy as ViableMovingPlayer;
             if (--e.life <= 0) {
+              const x = enemy.x;
+              const y = enemy.y;
+              const radius = enemy.radius;
+              const explosion = ActionPattern.takeEmptyPlayers(1, this.effects);
+              explosion
+                .next()
+                .value?.show(0, 0)
+                ?.addActionPattern(function* (effect) {
+                  yield* EnemyPattern.explose(effect.graphics, x, y, radius);
+                  effect.vanish();
+                });
               enemy.vanish();
             }
           }),
@@ -144,6 +114,15 @@ export class Field {
       graphics.beginFill(0xff0000).drawCircle(x, y, radius).endFill();
       app.stage.addChild(graphics);
     }).show(0, 0);
+
+    this.effects = Array.from(
+      { length: 20 },
+      () =>
+        new PatterningPlayer(0, (_, _1, _2, graphics) => {
+          app.stage.addChild(graphics);
+          graphics.blendMode = PIXI.BLEND_MODES.MULTIPLY;
+        }),
+    );
 
     this.enemyPattern = ActionPattern.moveMultipleAtInterval(
       100,

@@ -5,7 +5,7 @@ import { PatterningPlayer } from '../character/patterning-player';
 import { EnemyPattern } from './enemy-pattern';
 
 export class ActionPattern {
-  private static *takeEmptyPlayers<TPlayer extends Player>(
+  static *takeEmptyPlayers<TPlayer extends Player>(
     num: number,
     players: TPlayer[],
   ): Iterator<TPlayer, undefined, TPlayer> {
