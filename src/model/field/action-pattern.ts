@@ -3,22 +3,9 @@ import { Player } from '../character/player';
 import { Coordinate } from '../character/coordinate';
 import { PatterningPlayer } from '../character/patterning-player';
 import { EnemyPattern } from './enemy-pattern';
+import { PlayerCollection } from '../character/player-collection';
 
 export class ActionPattern {
-  static *takeEmptyPlayers<TPlayer extends Player>(
-    num: number,
-    players: TPlayer[],
-  ): Iterator<TPlayer, undefined, TPlayer> {
-    let taken = 0;
-    for (const player of players) {
-      if (taken >= num) return;
-      if (!player.isVisible) {
-        taken++;
-        yield player;
-      }
-    }
-  }
-
   private static moveByFunction(
     self: Player,
     funcX: (t: number) => number,
@@ -41,7 +28,7 @@ export class ActionPattern {
   static *moveMultipleAtInterval(
     num: number,
     interval: number,
-    enemies: PatterningPlayer[],
+    enemies: PlayerCollection<PatterningPlayer>,
     funcX: (t: number) => number,
     funcY: (t: number) => number,
     pattern: (enemy: PatterningPlayer) => IterableIterator<() => void>,
@@ -49,7 +36,7 @@ export class ActionPattern {
     screenHeight: number | undefined,
   ): IterableIterator<() => void> {
     for (let i = 0; i < num; i++) {
-      const showingEnemies = this.takeEmptyPlayers(1, enemies);
+      const showingEnemies = enemies.takeEmpties(1);
       showingEnemies
         .next()
         .value?.show(funcX(0), funcY(0))
@@ -96,11 +83,11 @@ export class ActionPattern {
   static shootRadially(
     from: Player,
     to: Player,
-    bullets: MovingPlayer[],
+    bullets: PlayerCollection<MovingPlayer>,
     num: number,
     action: (bullet: MovingPlayer, execute: () => void) => void,
   ): void {
-    const showingBullets = this.takeEmptyPlayers(100, bullets);
+    const showingBullets = bullets.takeEmpties(100);
     for (let i = 0; i < num; i++) {
       showingBullets
         .next()
@@ -127,21 +114,19 @@ export class ActionPattern {
 
   static hitAndVanish(
     bullet: Player,
-    targets: Player[],
+    targets: PlayerCollection<MovingPlayer>,
     action: (target: Player) => void,
   ): () => void {
     return (): void => {
-      // Hit enemy
-      for (const target of targets) {
-        if (
-          target.isVisible &&
-          bullet.isVisible &&
-          Coordinate.isCollided(bullet.hitarea, target.hitarea)
-        ) {
+      targets.forEach(
+        (target) => {
           bullet.vanish();
           action(target);
-        }
-      }
+        },
+        (target) =>
+          bullet.isVisible &&
+          Coordinate.isCollided(bullet.hitarea, target.hitarea),
+      );
     };
   }
 }

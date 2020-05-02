@@ -6,17 +6,18 @@ import { ActionPattern } from './action-pattern';
 import { PatterningPlayer } from '../character/patterning-player';
 import { EnemyPattern } from './enemy-pattern';
 import { Life, Viable } from './viable';
+import { PlayerCollection } from '../character/player-collection';
 
 const ViableMovingPlayer = Viable(PatterningPlayer);
 type ViableMovingPlayer = Life & PatterningPlayer;
 
 export class Field {
   protected protagonist: Player;
-  protected enemies: ViableMovingPlayer[];
-  protected bullets: MovingPlayer[];
-  protected myBullets: MovingPlayer[];
+  protected enemies: PlayerCollection<ViableMovingPlayer>;
+  protected bullets: PlayerCollection<MovingPlayer>;
+  protected myBullets: PlayerCollection<MovingPlayer>;
 
-  protected effects: PatterningPlayer[];
+  protected effects: PlayerCollection<PatterningPlayer>;
   protected enemyPattern: IterableIterator<() => void>;
 
   protected app: PIXI.Application;
@@ -63,22 +64,14 @@ export class Field {
     effect: Player,
   ): IterableIterator<() => void> {
     yield* EnemyPattern.explode(effect, x, y, radius, () => {
-      for (const bullet of this.bullets) {
-        if (
-          bullet.isVisible &&
-          Coordinate.isCollided(effect.hitarea, bullet.hitarea)
-        ) {
-          bullet.vanish();
-        }
-      }
-      for (const enemy of this.enemies) {
-        if (
-          enemy.isVisible &&
-          Coordinate.isCollided(effect.hitarea, enemy.hitarea)
-        ) {
-          this.hitEnemy(enemy, 1);
-        }
-      }
+      this.bullets.forEach(
+        (bullet) => bullet.vanish(),
+        (bullet) => Coordinate.isCollided(effect.hitarea, bullet.hitarea),
+      );
+      this.enemies.forEach(
+        (enemy) => this.hitEnemy(enemy, 1),
+        (enemy) => Coordinate.isCollided(effect.hitarea, enemy.hitarea),
+      );
     });
     effect.vanish();
   }
@@ -89,7 +82,7 @@ export class Field {
       const x = enemy.x;
       const y = enemy.y;
       const radius = enemy.radius;
-      const explosion = ActionPattern.takeEmptyPlayers(1, this.effects);
+      const explosion = this.effects.takeEmpties(1);
       explosion
         .next()
         .value?.show(0, 0)
@@ -109,8 +102,8 @@ export class Field {
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
 
-    this.enemies = Array.from(
-      { length: 20 },
+    this.enemies = new PlayerCollection(
+      20,
       () =>
         new ViableMovingPlayer(30, (x, y, radius, graphics) => {
           graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
@@ -118,8 +111,8 @@ export class Field {
         }),
     );
 
-    this.bullets = Array.from(
-      { length: 1000 },
+    this.bullets = new PlayerCollection(
+      1000,
       () =>
         new MovingPlayer(5, (x, y, radius, graphics) => {
           graphics.beginFill(0xffffff).drawCircle(x, y, radius).endFill();
@@ -127,7 +120,7 @@ export class Field {
         }),
     );
 
-    this.myBullets = Array.from({ length: 30 }, () =>
+    this.myBullets = new PlayerCollection(30, () =>
       new MovingPlayer(5, (x, y, radius, graphics) => {
         graphics.beginFill(0x00ff00).drawCircle(x, y, radius).endFill();
         app.stage.addChild(graphics);
@@ -145,8 +138,8 @@ export class Field {
       app.stage.addChild(graphics);
     }).show(0, 0);
 
-    this.effects = Array.from(
-      { length: 20 },
+    this.effects = new PlayerCollection(
+      20,
       () =>
         new PatterningPlayer(0, (_, _1, _2, graphics) => {
           app.stage.addChild(graphics);
@@ -173,18 +166,11 @@ export class Field {
   loop(): void {
     this.protagonist.x += this.vx;
     this.protagonist.y += this.vy;
-    for (const bullet of this.bullets) {
-      bullet.move();
-    }
-    for (const myBullet of this.myBullets) {
-      myBullet.move();
-    }
-    for (const enemy of this.enemies) {
-      enemy.move();
-    }
-    for (const effect of this.effects) {
-      effect.move();
-    }
+    this.bullets.moveAll();
+    this.myBullets.moveAll();
+    this.enemies.moveAll();
+    this.effects.moveAll();
+
     this.waittimeNextBullet -= this.waittimeNextBullet > 0 ? 1 : 0;
     this.enemyPattern.next().value?.();
   }
@@ -204,17 +190,10 @@ export class Field {
   launchBullet(): void {
     if (this.waittimeNextBullet > 0) return;
 
-    let single = false;
-    for (const myBullet of this.myBullets) {
-      if (myBullet.isVisible) continue;
-      myBullet.show(
-        this.protagonist.x + (single ? 10 : -10),
-        this.protagonist.y,
-      );
-      if (single) return;
-      single = true;
-      this.waittimeNextBullet = 5;
-    }
+    const shooting = this.myBullets.takeEmpties(2);
+    shooting.next().value?.show(this.protagonist.x - 10, this.protagonist.y);
+    shooting.next().value?.show(this.protagonist.x + 10, this.protagonist.y);
+    this.waittimeNextBullet = 5;
   }
 
   setMovingVelocity(): number {
