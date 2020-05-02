@@ -109,7 +109,7 @@ export class ActionPattern {
           bullet.show(from.x, from.y);
 
           // Set angle
-          const r = 5;
+          const r = 0.5;
           const t =
             Math.atan2(to.y - from.y, to.x - from.x) + (i * Math.PI * 2) / num;
           const vx = Math.cos(t) * r;

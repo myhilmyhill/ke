@@ -41,6 +41,7 @@ export class EnemyPattern {
     x: number,
     y: number,
     radius: number,
+    func: (graphics: Graphics, radius: number) => void,
   ): IterableIterator<() => void> {
     for (let r = radius / 2; r <= radius * 2; r += 5) {
       /**
@@ -74,7 +75,7 @@ export class EnemyPattern {
       oval(g, radius * 2, x, y);
       g.beginHole();
       oval(g, r, x, y);
-      yield (): void => undefined;
+      yield (): void => func(g, r);
       g.clear();
     }
   }

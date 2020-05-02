@@ -1,4 +1,4 @@
-import { Coordinate } from '../character/coordinate';
+import { Coordinate, Circle } from '../character/coordinate';
 import { MovingPlayer } from '../character/moving-player';
 import { Player } from '../character/player';
 import * as PIXI from 'pixi.js';
@@ -56,6 +56,46 @@ export class Field {
     }
   }
 
+  *explodeAndEraseBullets(
+    x: number,
+    y: number,
+    radius: number,
+    effect: Player,
+  ): IterableIterator<() => void> {
+    yield* EnemyPattern.explode(effect.graphics, x, y, radius, (_, r) => {
+      const point = new PIXI.Point(x, y);
+      const inside = new Circle({ point, radius: r });
+      for (const bullet of this.bullets) {
+        if (bullet.isVisible && Coordinate.isCollided(inside, bullet.hitarea)) {
+          bullet.vanish();
+        }
+      }
+      for (const enemy of this.enemies) {
+        if (enemy.isVisible && Coordinate.isCollided(inside, enemy.hitarea)) {
+          this.hitEnemy(enemy, 1);
+        }
+      }
+    });
+    effect.vanish();
+  }
+
+  hitEnemy(enemy: ViableMovingPlayer, damage: number): void {
+    enemy.life -= damage;
+    if (enemy.life <= 0) {
+      const x = enemy.x;
+      const y = enemy.y;
+      const radius = enemy.radius;
+      const explosion = ActionPattern.takeEmptyPlayers(1, this.effects);
+      explosion
+        .next()
+        .value?.show(0, 0)
+        ?.addActionPattern((effect) =>
+          this.explodeAndEraseBullets(x, y, radius, effect),
+        );
+      enemy.vanish();
+    }
+  }
+
   constructor(
     app: PIXI.Application,
     screenWidth: number,
@@ -90,23 +130,9 @@ export class Field {
       })
         .addAction((self) => ActionPattern.move(self, 0, -10))
         .addAction((self) =>
-          ActionPattern.hitAndVanish(self, this.enemies, (enemy) => {
-            const e = enemy as ViableMovingPlayer;
-            if (--e.life <= 0) {
-              const x = enemy.x;
-              const y = enemy.y;
-              const radius = enemy.radius;
-              const explosion = ActionPattern.takeEmptyPlayers(1, this.effects);
-              explosion
-                .next()
-                .value?.show(0, 0)
-                ?.addActionPattern(function* (effect) {
-                  yield* EnemyPattern.explode(effect.graphics, x, y, radius);
-                  effect.vanish();
-                });
-              enemy.vanish();
-            }
-          }),
+          ActionPattern.hitAndVanish(self, this.enemies, (enemy) =>
+            this.hitEnemy(enemy as ViableMovingPlayer, 1),
+          ),
         ),
     );
 
@@ -128,8 +154,8 @@ export class Field {
       100,
       30,
       this.enemies,
-      (t) => Math.sin(t / 360.0) * 200,
-      (t) => -Math.cos(t / 360.0) * 200 + 200,
+      (t) => Math.sin(t / 120.0) * 250,
+      (t) => -Math.cos(t / 120.0) * 250 + 250,
       (self) => this.pattern(self as ViableMovingPlayer),
       this.screenWidth,
       this.screenHeight,
