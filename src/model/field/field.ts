@@ -101,7 +101,7 @@ export class Field {
                 .next()
                 .value?.show(0, 0)
                 ?.addActionPattern(function* (effect) {
-                  yield* EnemyPattern.explose(effect.graphics, x, y, radius);
+                  yield* EnemyPattern.explode(effect.graphics, x, y, radius);
                   effect.vanish();
                 });
               enemy.vanish();

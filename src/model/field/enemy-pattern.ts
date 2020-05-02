@@ -36,7 +36,7 @@ export class EnemyPattern {
     }
   }
 
-  static *explose(
+  static *explode(
     g: Graphics,
     x: number,
     y: number,
