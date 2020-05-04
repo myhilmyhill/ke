@@ -1,3 +1,5 @@
+import { Recorder } from './recorder';
+
 /**
  * keyboard, gamepad
  */
@@ -11,6 +13,11 @@ export class InputPad {
   } = {};
   private static _pressListener?: (event: KeyboardEvent) => void;
   private static _releaseListener?: (event: KeyboardEvent) => void;
+  private static recorder?: Recorder;
+
+  static setRecorder(recorder: Recorder): void {
+    this.recorder = recorder;
+  }
 
   private static init(): void {
     const pressListener = (event: KeyboardEvent): void => {
@@ -48,8 +55,11 @@ export class InputPad {
   }
 
   public static fire(): void {
-    for (const value of Object.values(this.keys)) {
-      if (value.isPressed) value.pressFunc?.();
+    for (const [key, value] of Object.entries(this.keys)) {
+      if (value.isPressed) {
+        value.pressFunc?.();
+        this.recorder?.setKey(key);
+      }
     }
   }
 
@@ -73,6 +83,7 @@ export class InputPad {
 
   static removeAllButtons(): void {
     this.keys = {};
+    this.recorder = undefined;
     if (this._pressListener !== undefined) {
       document.removeEventListener('keydown', this._pressListener);
       this._pressListener = undefined;

@@ -30,7 +30,7 @@ export class Field {
   protected vy = 0;
   protected isSlow = false;
 
-  protected random: Random = new RandomXorshift(Number(new Date()));
+  protected random: Random;
 
   *explodeAndEraseBullets(
     x: number,
@@ -79,10 +79,12 @@ export class Field {
     app: PIXI.Application,
     screenWidth: number,
     screenHeight: number,
+    seed: number,
   ) {
     this.app = app;
     this.screenWidth = screenWidth;
     this.screenHeight = screenHeight;
+    this.random = new RandomXorshift(seed);
 
     this.enemies = new PlayerCollection(
       20,
