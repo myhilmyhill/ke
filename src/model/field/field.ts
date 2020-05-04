@@ -7,6 +7,8 @@ import { PatterningPlayer } from '../character/patterning-player';
 import { EnemyPattern } from './enemy-pattern';
 import { Life, Viable } from './viable';
 import { PlayerCollection } from '../character/player-collection';
+import { Random } from '../calculator/random';
+import { RandomXorshift } from '../calculator/random-xorshift';
 
 const ViableMovingPlayer = Viable(PatterningPlayer);
 type ViableMovingPlayer = Life & PatterningPlayer;
@@ -18,7 +20,7 @@ export class Field {
   protected myBullets: PlayerCollection<MovingPlayer>;
 
   protected effects: PlayerCollection<PatterningPlayer>;
-  protected enemyPattern: IterableIterator<() => void>;
+  protected enemyPattern: IterableIterator<(() => void) | undefined>;
 
   protected app: PIXI.Application;
   protected screenHeight: number;
@@ -28,34 +30,7 @@ export class Field {
   protected vy = 0;
   protected isSlow = false;
 
-  *pattern(enemy: ViableMovingPlayer): IterableIterator<() => void> {
-    enemy.life = 5;
-    for (;;) {
-      yield (): void =>
-        ActionPattern.shootRadially(
-          enemy,
-          this.protagonist,
-          this.bullets,
-          10,
-          (bullet, execute) => {
-            if (
-              ActionPattern.isOutOfBound(
-                bullet,
-                this.screenWidth,
-                this.screenHeight,
-              )
-            ) {
-              bullet.vanish();
-              return;
-            }
-            execute();
-            this.determineHit(bullet);
-          },
-        );
-
-      yield* EnemyPattern.wait(20);
-    }
-  }
+  protected random: Random = new RandomXorshift(Number(new Date()));
 
   *explodeAndEraseBullets(
     x: number,
@@ -90,6 +65,13 @@ export class Field {
           this.explodeAndEraseBullets(x, y, radius, effect),
         );
       enemy.vanish();
+      ActionPattern.shootBullet(
+        this.random.randIntBetween(0, this.screenWidth),
+        this.random.randIntBetween(0, this.screenHeight / 2),
+        this.random.randBetween(1, 5),
+        this.protagonist,
+        this.bullets,
+      );
     }
   }
 
@@ -147,16 +129,41 @@ export class Field {
         }),
     );
 
-    this.enemyPattern = ActionPattern.moveMultipleAtInterval(
-      100,
-      30,
-      this.enemies,
-      (t) => Math.sin(t / 120.0) * 250,
-      (t) => -Math.cos(t / 120.0) * 250 + 250,
-      (self) => this.pattern(self as ViableMovingPlayer),
-      this.screenWidth,
-      this.screenHeight,
-    );
+    this.enemyPattern = function* (
+      this: Field,
+    ): IterableIterator<(() => void) | undefined> {
+      for (;;) {
+        for (const i of ActionPattern.moveMultipleAtInterval(
+          10,
+          30,
+          this.enemies,
+          (t) => Math.sin(t / 120.0) * 250,
+          (t) => -Math.cos(t / 120.0) * 250 + 250,
+          (self): IterableIterator<() => void> => {
+            (self as ViableMovingPlayer).life = 5;
+            return [][Symbol.iterator]();
+          },
+          this.screenWidth,
+          this.screenHeight,
+        )) {
+          i();
+          yield;
+        }
+        yield* ActionPattern.moveMultipleAtInterval(
+          10,
+          30,
+          this.enemies,
+          (t) => this.screenWidth - Math.sin(t / 120.0) * 250,
+          (t) => -Math.cos(t / 120.0) * 250 + 250,
+          (self): IterableIterator<() => void> => {
+            (self as ViableMovingPlayer).life = 5;
+            return [][Symbol.iterator]();
+          },
+          this.screenWidth,
+          this.screenHeight,
+        );
+      }
+    }.bind(this)();
   }
 
   dispose(): void {

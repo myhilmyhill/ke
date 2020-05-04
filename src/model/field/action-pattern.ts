@@ -80,6 +80,37 @@ export class ActionPattern {
     };
   }
 
+  static shootBullet(
+    x: number,
+    y: number,
+    speed: number,
+    to: Player,
+    bullets: PlayerCollection<MovingPlayer>,
+    action?: (bullet: MovingPlayer, execute: () => void) => void,
+  ): void {
+    const showingBullets = bullets.takeEmpties(1);
+    showingBullets
+      .next()
+      .value?.deleteActions()
+      ?.addAction((bullet) => {
+        bullet.show(x, y);
+
+        // Set angle
+        const t = Math.atan2(to.y - y, to.x - x);
+        const vx = Math.cos(t) * speed;
+        const vy = Math.sin(t) * speed;
+        const funcExecution = (): void => {
+          bullet.x += vx;
+          bullet.y += vy;
+        };
+        return (): void => {
+          action !== undefined
+            ? action(bullet, funcExecution)
+            : funcExecution();
+        };
+      });
+  }
+
   static shootRadially(
     from: Player,
     to: Player,
